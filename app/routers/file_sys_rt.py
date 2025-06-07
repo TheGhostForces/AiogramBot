@@ -5,7 +5,7 @@ from app.utils import buttons
 from app.database.repository import VerifyUser
 from app.fsm.functions_for_trusted import Functions
 from app.utils.file_sys import current_directory, check_exists_folder, get_folder_content, delete_content_by_number, \
-    one_level_up, update_path, change_path_directory, check_absolute_folder, show_content_folder
+    one_level_up, update_path, change_path_directory, check_absolute_folder, show_content_folder, send_all_types_files, create_folder
 
 router = Router()
 
@@ -24,14 +24,62 @@ async def file_system(message: types.Message, state: FSMContext):
         await state.set_state(Functions.change_path)
         await show_content_folder(message)
         await buttons.show_buttons_func(message, state)
+    if message.text == "Отправить папку/файл в телеграмм":
+        await state.set_state(Functions.send_to_tg)
+        await show_content_folder(message)
+        await buttons.show_buttons_func(message, state, "send")
+    if message.text == "Создать папку/файл в текущей директории":
+        await state.set_state(Functions.create_folder)
+        await show_content_folder(message)
+        await buttons.show_buttons_func(message, state, "create")
     if message.text == "➡":
+        await message.delete()
         await buttons.show_buttons_file_system(message, 2)
-    if message.text == "⬅":
+    if message.text == "◀️":
+        await message.delete()
         await state.set_state(Functions.choosing)
         await buttons.show_buttons_choice(message, state)
-    if message.text == "⬅ ":
+    if message.text == "⬅":
+        await message.delete()
         await buttons.show_buttons_file_system(message)
 
+@router.message(Functions.create_folder)
+async def create(message: types.Message, state: FSMContext):
+    if message.text == "Назад":
+        await state.clear()
+        await state.set_state(Functions.file_system)
+        await show_content_folder(message)
+        await buttons.show_buttons_file_system(message)
+    else:
+        current_path = await current_directory(message)
+        ext = await create_folder(current_path, message.text)
+        if ext:
+            await show_content_folder(message)
+        else:
+            await show_content_folder(message)
+
+@router.message(Functions.send_to_tg)
+async def send(message: types.Message, state: FSMContext):
+    current_path = await current_directory(message)
+    content = await get_folder_content(current_path)
+    if message.text == "Назад":
+        await state.clear()
+        await state.set_state(Functions.file_system)
+        await show_content_folder(message)
+        await buttons.show_buttons_file_system(message)
+    else:
+        try:
+            await send_all_types_files(message, current_path, content, int(message.text))
+            await state.clear()
+            await state.set_state(Functions.file_system)
+            await show_content_folder(message)
+            await buttons.show_buttons_file_system(message)
+        except ValueError:
+            await message.answer("Пожалуйста, введите цифру")
+        except KeyError:
+            await message.answer("Вы ввели номер, которого нету в списке. Пожалуйста, введите соответствующий номер")
+        except PermissionError:
+            await message.answer("Похоже, вы выбрали папку/файл, где вам отказали в доступе. Лучше так не делать...")
 @router.message(Functions.delete_content)
 async def delete(message: types.Message, state: FSMContext):
     current_path = await current_directory(message)
@@ -39,7 +87,6 @@ async def delete(message: types.Message, state: FSMContext):
     if message.text == "Назад":
         await state.clear()
         await state.set_state(Functions.file_system)
-        await message.answer(f"Текущая директория {await current_directory(message)}")
         await show_content_folder(message)
         await buttons.show_buttons_file_system(message)
     else:
@@ -67,7 +114,6 @@ async def change_path(message: types.Message, state: FSMContext):
     if message.text == "Назад":
         await state.clear()
         await state.set_state(Functions.file_system)
-        await message.answer(f"Текущая директория {await current_directory(message)}")
         await show_content_folder(message)
         await buttons.show_buttons_file_system(message)
         return
@@ -83,7 +129,7 @@ async def change_path(message: types.Message, state: FSMContext):
                 await message.answer("Данной директории нету в текущей директории")
                 return
             if new_path == "is_file":
-                await message.answer("Переместиться в файл невозможно")
+                await message.answer("Сюда невозможно переместиться")
                 return
             if not new_path[-1] == "/":
                 new_path += "/"

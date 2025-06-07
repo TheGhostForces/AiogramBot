@@ -1,5 +1,9 @@
 import shutil
 from pathlib import Path
+
+from aiogram.types import FSInputFile
+
+from app.config import PHOTO_EXT, VIDEO_EXT, AUDIO_EXT, DOCUMENT_EXT
 from app.database.repository import VerifyUser
 
 
@@ -74,3 +78,49 @@ async def show_content_folder(message):
         await message.answer(f"Вы находитесь по пути: C:/\n\n{result_text}", parse_mode="HTML")
         if not content:
             await message.answer("Папка пуста.")
+
+async def send_all_types_files(message, current_path: str, content: dict, number: int):
+    value = content[number]
+    content_path = Path(current_path + value[2:])
+    ext = content_path.suffix.lower()
+    file_size_mb = content_path.stat().st_size / (1024 * 1024)
+    if ext:
+        file = FSInputFile(content_path)
+        if file_size_mb > 50:
+            await message.answer(f"Файл {content_path.name} слишком большой для отправки ({file_size_mb:.2f} МБ).\nВыберите другую папку/файл")
+        else:
+            if ext in PHOTO_EXT:
+                await message.answer_photo(file, caption=f"Фото: {content_path.name}")
+            elif ext in VIDEO_EXT:
+                await message.answer_video(file, caption=f"Видео: {content_path.name}")
+            elif ext in AUDIO_EXT:
+                await message.answer_audio(file, caption=f"Аудио: {content_path.name}")
+            elif ext in DOCUMENT_EXT:
+                await message.answer_document(file, caption=f"Документ: {content_path.name}")
+            else:
+                await message.answer_document(file, caption=f"Неизвестный тип: {content_path.name}")
+    else:
+        archive_path = Path(f"C:/PythonProjects/BotOnAiogram/{value[2:]}").with_suffix(".zip")
+        try:
+            shutil.make_archive(value[2:], 'zip', content_path)
+            archive_size_mb = archive_path.stat().st_size / (1024 * 1024)
+
+            if archive_size_mb > 50:
+                await message.answer(f"Пака {content_path.name} слишком большая для отправки ({archive_size_mb:.2f} МБ).\nВыберите другую папку/файл")
+            else:
+                file = FSInputFile(archive_path)
+                await message.answer_document(file, caption=f"Папка: {content_path.name}")
+        except Exception as e:
+            await message.answer(f"Ошибка при архивации: {e}")
+        finally:
+            if archive_path.exists():
+                archive_path.unlink()
+
+async def create_folder(current_path: str, name: str):
+    create_path = Path(current_path + name)
+    ext = create_path.suffix
+    if ext:
+        create_path.touch(exist_ok=True)
+    else:
+        create_path.mkdir(parents=True, exist_ok=True)
+    return ext
