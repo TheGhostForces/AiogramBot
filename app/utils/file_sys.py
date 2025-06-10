@@ -1,9 +1,9 @@
 import shutil
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 from aiogram.types import FSInputFile
 
-from app.config import PHOTO_EXT, VIDEO_EXT, AUDIO_EXT, DOCUMENT_EXT
+from app.config import Config
 from app.database.repository import VerifyUser
 
 
@@ -15,7 +15,7 @@ async def current_directory(message):
     return current_path
 
 async def update_path(message, new_path: str):
-    await VerifyUser.update_path(message.from_user.id, message.from_user.username, new_path)
+    await VerifyUser.update_path(message.from_user.id, message.from_user.username, str(PureWindowsPath(new_path)) + "\\")
 
 async def get_folder_content(current_path: str) -> dict[int, str]:
     current_path = Path(current_path)
@@ -81,7 +81,7 @@ async def show_content_folder(message):
 
 async def send_all_types_files(message, current_path: str, content: dict, number: int):
     value = content[number]
-    content_path = Path(current_path + value[2:])
+    content_path = Path(current_path + "\\" + value[2:])
     ext = content_path.suffix.lower()
     file_size_mb = content_path.stat().st_size / (1024 * 1024)
     if ext:
@@ -89,13 +89,13 @@ async def send_all_types_files(message, current_path: str, content: dict, number
         if file_size_mb > 50:
             await message.answer(f"Файл {content_path.name} слишком большой для отправки ({file_size_mb:.2f} МБ).\nВыберите другую папку/файл")
         else:
-            if ext in PHOTO_EXT:
+            if ext in Config.PHOTO_EXT:
                 await message.answer_photo(file, caption=f"Фото: {content_path.name}")
-            elif ext in VIDEO_EXT:
+            elif ext in Config.VIDEO_EXT:
                 await message.answer_video(file, caption=f"Видео: {content_path.name}")
-            elif ext in AUDIO_EXT:
+            elif ext in Config.AUDIO_EXT:
                 await message.answer_audio(file, caption=f"Аудио: {content_path.name}")
-            elif ext in DOCUMENT_EXT:
+            elif ext in Config.DOCUMENT_EXT:
                 await message.answer_document(file, caption=f"Документ: {content_path.name}")
             else:
                 await message.answer_document(file, caption=f"Неизвестный тип: {content_path.name}")

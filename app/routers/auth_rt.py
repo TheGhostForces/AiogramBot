@@ -3,10 +3,12 @@ from aiogram import Router, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, ReplyKeyboardRemove
+
+from app.fsm.choose_states import ChooseState
 from app.utils import buttons
 from app.database.repository import Users, VerifyUser
 from app.fsm.auth import AuthStates
-from app.fsm.functions_for_trusted import Functions
+
 
 router = Router()
 
@@ -35,7 +37,7 @@ async def processed_password(message: types.Message, state: FSMContext):
         await message.delete()
         msg = await message.answer("Пароль верный. Доступ открыт!")
         await Users.update_attempts(message.from_user.id, message.from_user.username, 3)
-        await state.set_state(Functions.choosing)
+        await state.set_state(ChooseState.choosing)
         await buttons.show_buttons_choice(message, state)
         await asyncio.sleep(2)
         await message.bot.delete_messages(chat_id=msg.chat.id, message_ids=[msg.message_id, data.get("msg_pass")])
