@@ -21,7 +21,7 @@ async def get_system_uptime():
     uptime = now - boot_time
     return uptime, boot_time.strftime("%d.%m.%Y %H:%M:%S")
 
-async def get_uploading_components(message):
+async def get_uploading_components():
     cpu_percent = psutil.cpu_percent(interval=1)
     memory = psutil.virtual_memory()
     gpus = GPUtil.getGPUs()
@@ -47,7 +47,7 @@ async def get_uploading_components(message):
         except PermissionError:
             text += f"• {part.device}: ❌ Нет доступа\n"
 
-    await message.answer(text)
+    return text
 
 async def get_process_list(limit=50):
     process_info = []
@@ -79,7 +79,7 @@ async def get_process_list(limit=50):
 async def screenshot():
     timestamp = time.strftime("%Y%m%d_%H%M%S")
     filename = f'screenshot_{timestamp}.png'
-    filepath = Path("C:/PythonProjects/BotOnAiogram/all_screenshots") / filename
+    filepath = Path("all_screenshots") / filename # your folder for screenshots
     screenshot = pyautogui.screenshot()
     screenshot.save(filepath)
     return filepath

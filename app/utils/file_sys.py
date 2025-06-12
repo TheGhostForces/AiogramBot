@@ -67,17 +67,19 @@ async def show_content_folder(message):
         current_path = await current_directory(message)
         content = await get_folder_content(current_path)
         result_text = "\n".join(f"{idx}. {name}" for idx, name in content.items())
-        await message.answer(f"Вы находитесь по пути: {current_path}\n\n{result_text}", parse_mode="HTML")
+        text = f"Вы находитесь по пути: {current_path}\n\n{result_text}"
         if not content:
-            await message.answer("Папка пуста.")
+            text = "Папка пуста."
+        return text
     except PermissionError:
-        await message.answer("Похоже, вы выбрали папку, где вам отказали в доступе, поэтому вы были возвращены в C:/")
         await VerifyUser.update_path(message.from_user.id, message.from_user.username, "C:/")
         content = await get_folder_content("C:/")
         result_text = "\n".join(f"{idx}. {name}" for idx, name in content.items())
-        await message.answer(f"Вы находитесь по пути: C:/\n\n{result_text}", parse_mode="HTML")
+        text = f"Вы находитесь по пути: C:/\n\n{result_text}"
         if not content:
-            await message.answer("Папка пуста.")
+            text = message.answer("Папка пуста.")
+        text += "\n\nПохоже, вы выбрали папку, где вам отказали в доступе, поэтому вы были возвращены в C:/"
+        return text
 
 async def send_all_types_files(message, current_path: str, content: dict, number: int):
     value = content[number]
@@ -87,7 +89,8 @@ async def send_all_types_files(message, current_path: str, content: dict, number
     if ext:
         file = FSInputFile(content_path)
         if file_size_mb > 50:
-            await message.answer(f"Файл {content_path.name} слишком большой для отправки ({file_size_mb:.2f} МБ).\nВыберите другую папку/файл")
+            text = f"Файл {content_path.name} слишком большой для отправки ({file_size_mb:.2f} МБ).\nВыберите другую папку/файл"
+            return text
         else:
             if ext in Config.PHOTO_EXT:
                 await message.answer_photo(file, caption=f"Фото: {content_path.name}")
@@ -100,18 +103,20 @@ async def send_all_types_files(message, current_path: str, content: dict, number
             else:
                 await message.answer_document(file, caption=f"Неизвестный тип: {content_path.name}")
     else:
-        archive_path = Path(f"C:/PythonProjects/BotOnAiogram/{value[2:]}").with_suffix(".zip")
+        archive_path = Path(f"{value[2:]}").with_suffix(".zip")
         try:
             shutil.make_archive(value[2:], 'zip', content_path)
             archive_size_mb = archive_path.stat().st_size / (1024 * 1024)
 
             if archive_size_mb > 50:
-                await message.answer(f"Пака {content_path.name} слишком большая для отправки ({archive_size_mb:.2f} МБ).\nВыберите другую папку/файл")
+                text = f"Папка {content_path.name} слишком большая для отправки ({archive_size_mb:.2f} МБ).\nВыберите другую папку/файл"
+                return text
             else:
                 file = FSInputFile(archive_path)
                 await message.answer_document(file, caption=f"Папка: {content_path.name}")
         except Exception as e:
-            await message.answer(f"Ошибка при архивации: {e}")
+            text = f"Ошибка при архивации: {e}"
+            return text
         finally:
             if archive_path.exists():
                 archive_path.unlink()
@@ -123,4 +128,3 @@ async def create_folder(current_path: str, name: str):
         create_path.touch(exist_ok=True)
     else:
         create_path.mkdir(parents=True, exist_ok=True)
-    return ext
