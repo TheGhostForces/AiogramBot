@@ -35,8 +35,8 @@ async def inline_buttons_change_directory():
 async def inline_buttons_sys():
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="Пробудить ПК", callback_data="Пробудить"), InlineKeyboardButton(text="Время работы", callback_data="Время")],
-        [InlineKeyboardButton(text="Загрузка CPU, RAM и т.д.", callback_data="Загрузка"), InlineKeyboardButton(text="Все процессы", callback_data="Все процессы")],
-        [InlineKeyboardButton(text="Скриншот", callback_data="Скриншот")],
+        [InlineKeyboardButton(text="Загрузка CPU, RAM и т.д.", callback_data="Загрузка"), InlineKeyboardButton(text="Скриншот", callback_data="Скриншот")],
+        [InlineKeyboardButton(text="Все процессы", callback_data="Все процессы"), InlineKeyboardButton(text="Закрыть процесс", callback_data="Закрыть")],
         [InlineKeyboardButton(text="Выключить ПК", callback_data="Выключить"), InlineKeyboardButton(text="Перезагрузка ПК", callback_data="Перезагрузка")],
         [InlineKeyboardButton(text="Назад", callback_data="Назад в главное меню")],
     ])
@@ -45,5 +45,18 @@ async def inline_buttons_sys():
 async def inline_buttons_yes_no():
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="Да", callback_data="Да"), InlineKeyboardButton(text="Нет", callback_data="Нет")],
+    ])
+    return keyboard
+
+async def inline_button_back_to_sys():
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Назад", callback_data="Назад в системные действия")],
+    ])
+    return keyboard
+
+async def inline_button_choice_logs():
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Логи бота", callback_data="Логи бота"), InlineKeyboardButton(text="Логи системы", callback_data="Логи системы")],
+        [InlineKeyboardButton(text="Назад", callback_data="Назад в главное меню")],
     ])
     return keyboard

@@ -1,4 +1,4 @@
-import asyncio
+from typing import Optional
 from sqlalchemy import select, update
 from app.database.database import new_session
 from app.database.models import TrustedUsersOrm, HistoryOrm, UsersOrm
@@ -21,7 +21,7 @@ class VerifyUser:
     #     async with new_session() as session:
     #         new_user = TrustedUsersOrm(
     #             id_telegram_account=your_id,
-    #             username='your_telegram_username',
+    #             username='your_username',
     #             secret_key='your_secret_key'
     #         )
     #         session.add(new_user)
@@ -58,7 +58,9 @@ class Users:
                 attempts=attempts
             )
             session.add(new_user)
+            await session.flush()
             await session.commit()
+            return new_user
 
     @classmethod
     async def check_user(cls, id_telegram: int, username: str):
@@ -93,16 +95,32 @@ class Users:
 
 class History:
     @classmethod
-    async def add_log(cls, action: str, success: bool, id_telegram: int, username: str):
+    async def add_log(cls, id_telegram: int, username: str, action: str, success: bool, details: Optional[dict] = None):
         async with new_session() as session:
             new_log = HistoryOrm(
-                action=action,
-                success=success,
                 id_telegram_account=id_telegram,
                 username=username,
+                action=action,
+                success=success,
+                details=details
             )
         session.add(new_log)
         await session.commit()
 
-# if __name__ == "__main__":
-#     asyncio.run(VerifyUser.add())
+    @classmethod
+    async def get_all_logs(cls):
+        async with new_session() as session:
+            result = await session.execute(
+                select(HistoryOrm)
+            )
+            return result.scalars().all()
+
+    @classmethod
+    async def get_logs(cls, id_telegram: int, username: str):
+        async with new_session() as session:
+            result = await session.execute(
+                select(HistoryOrm)
+                .where(HistoryOrm.id_telegram_account == id_telegram)
+                .where(HistoryOrm.username == username)
+            )
+            return result.scalars().all()

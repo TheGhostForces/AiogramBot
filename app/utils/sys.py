@@ -1,12 +1,12 @@
 import ctypes
 import datetime
 import platform
-import time
 from pathlib import Path
 import GPUtil
 import psutil
 import pyautogui
 import subprocess
+from aiogram.types import FSInputFile
 
 
 async def prevent_sleep():
@@ -49,35 +49,53 @@ async def get_uploading_components():
 
     return text
 
-async def get_process_list(limit=50):
-    process_info = []
-    for proc in psutil.process_iter(['pid', 'name', 'cpu_percent', 'memory_info']):
+async def get_parent_pids():
+    all_pids = {p.pid for p in psutil.process_iter()}
+    parent_pids = set()
+
+    for proc in psutil.process_iter(['ppid']):
         try:
-            info = proc.info
-            mem_mb = info['memory_info'].rss / 1024 / 1024
-            process_info.append({
-                'name': info['name'],
-                'pid': info['pid'],
-                'cpu': info['cpu_percent'],
-                'mem': round(mem_mb, 2)
-            })
+            ppid = proc.info['ppid']
+            if ppid in all_pids:
+                parent_pids.add(ppid)
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue
+    return parent_pids
 
-    process_info.sort(key=lambda x: x['cpu'], reverse=True)
+async def get_process_list():
+    timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H_%M_%S')
+    save_dir = Path("all_processes")
+    save_dir.mkdir(parents=True, exist_ok=True)
+    filename = save_dir / f"proccess_info_{timestamp}.txt"
+    parent_pids = await get_parent_pids()
 
-    output = "🖥️ *Топ процессов по CPU:*\n\n"
-    for proc in process_info[:limit]:
-        output += (
-            f"🔹 {proc['name']}\n"
-            f"  PID: {proc['pid']}\n"
-            f"  CPU: {proc['cpu']}%\n"
-            f"  RAM: {proc['mem']} MB\n\n"
-        )
-    return output
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write(f"Главные процессы на {timestamp}\n")
+        f.write("=" * 80 + "\n\n")
+
+        for proc in psutil.process_iter(
+                ['pid', 'name', 'username', 'status', 'cpu_percent', 'memory_percent', 'create_time']):
+            try:
+                if proc.pid in parent_pids:
+                    info = proc.info
+                    f.write(f"PID: {info['pid']}\n")
+                    f.write(f"Имя процесса: {info['name']}\n")
+                    f.write(f"Пользователь: {info.get('username', 'N/A')}\n")
+                    f.write(f"Статус: {info['status']}\n")
+                    f.write(f"CPU (%): {info['cpu_percent']}\n")
+                    f.write(f"Память (%): {info['memory_percent']:.2f}\n")
+                    f.write(
+                        f"Время запуска: {datetime.datetime.fromtimestamp(info['create_time']).strftime('%Y-%m-%d %H:%M:%S')}\n")
+                    f.write("-" * 80 + "\n")
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                continue
+        file = FSInputFile(filename)
+        return filename, file
 
 async def screenshot():
-    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H_%M_%S')
+    save_dir = Path("all_screenshots")
+    save_dir.mkdir(parents=True, exist_ok=True)
     filename = f'screenshot_{timestamp}.png'
     filepath = Path("all_screenshots") / filename # your folder for screenshots
     screenshot = pyautogui.screenshot()
@@ -96,3 +114,20 @@ async def shutdown_or_restart_pc(mode: str):
             subprocess.run(["shutdown", "-h", "now"])
         elif mode == "restart":
             subprocess.run(["sudo", "shutdown", "-r", "now"])
+
+async def kill_process_by_pid(pid: int):
+    try:
+        process = psutil.Process(pid)
+        name = process.name()
+        process.terminate()
+        process.wait(timeout=3)
+
+        if process.is_running():
+            process.kill()
+        return name, f"Процесс с PID {pid} был мягко завершен"
+    except psutil.NoSuchProcess:
+        return "Not Found", f"Процесс с PID {pid} не найден."
+    except psutil.AccessDenied:
+        process = psutil.Process(pid)
+        name = process.name()
+        return name, f"Нет доступа к завершению процесса с PID {pid}."

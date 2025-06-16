@@ -1,7 +1,7 @@
 import asyncio
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
-
 from app.database.models import Model
+
 
 async_engine = create_async_engine(
     "sqlite+aiosqlite:///telegrambot.db"

@@ -1,8 +1,6 @@
 import shutil
 from pathlib import Path, PureWindowsPath
-
 from aiogram.types import FSInputFile
-
 from app.config import Config
 from app.database.repository import VerifyUser
 
@@ -83,7 +81,7 @@ async def show_content_folder(message):
 
 async def send_all_types_files(message, current_path: str, content: dict, number: int):
     value = content[number]
-    content_path = Path(current_path + "\\" + value[2:])
+    content_path = Path(current_path) / value[2:]
     ext = content_path.suffix.lower()
     file_size_mb = content_path.stat().st_size / (1024 * 1024)
     if ext:

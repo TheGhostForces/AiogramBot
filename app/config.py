@@ -8,7 +8,7 @@ class Config:
     BOT_TOKEN = os.getenv('BOT_TOKEN')
 
     @classmethod
-    def validate(cls):
+    def validate_bot(cls):
         if not cls.BOT_TOKEN:
             raise ValueError("Не указан BOT_TOKEN в .env файле")
 
@@ -17,4 +17,5 @@ class Config:
     AUDIO_EXT = {".mp3", ".wav", ".ogg", ".flac"}
     DOCUMENT_EXT = {".pdf", ".doc", ".docx", ".txt", ".zip", ".rar", ".xlsx", ".csv"}
 
-Config.validate()
+
+Config.validate_bot()
